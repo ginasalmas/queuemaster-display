@@ -13,12 +13,15 @@ const QueueHeader: React.FC<QueueHeaderProps> = ({ className = '' }) => {
             <span className="text-2xl font-bold text-accent-foreground">🦅</span>
           </div>
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl md:text-3xl font-bold text-accent uppercase tracking-wide">
             PELAYANAN KUNJUNGAN RUTAN KELAS 1 DEPOK
           </h1>
           <p className="text-foreground text-sm md:text-base mt-1">
             Jl. M. Nasir No. 55, Cilodong, Kota Depok, Jawab barat 164114
+          </p>
+          <p className="text-foreground text-xs md:text-sm mt-1">
+            Telepon / Fax : 021 29218813  Email : rutandepok1@gmail.com
           </p>
         </div>
       </div>
