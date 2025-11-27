@@ -94,12 +94,37 @@ export const getCurrentQueueNumber = async (): Promise<number> => {
 
 export const speakQueueNumber = (queueNumber: number, loketNumber: number) => {
   if ('speechSynthesis' in window) {
-    const utterance = new SpeechSynthesisUtterance(
-      `Antrian ${queueNumber}, silahkan ke loket ${loketNumber}`
-    );
-    utterance.lang = 'id-ID';
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    // Wait a bit before speaking to ensure cancel is processed
+    setTimeout(() => {
+      const formattedNumber = formatQueueNumber(queueNumber);
+      const text = `Nomor antrian ${formattedNumber}, silahkan menuju ke loket ${loketNumber}`;
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.85;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      // Event handlers for debugging
+      utterance.onstart = () => {
+        console.log('Speech started:', text);
+      };
+      
+      utterance.onend = () => {
+        console.log('Speech ended');
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech error:', event);
+      };
+      
+      window.speechSynthesis.speak(utterance);
+    }, 100);
+  } else {
+    console.warn('Speech synthesis not supported');
   }
 };
 
