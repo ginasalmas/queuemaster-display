@@ -133,11 +133,15 @@ const Admin: React.FC = () => {
     const result = await callQueue(loketNumber);
     
     if (result) {
+      // Call speech function
       speakQueueNumber(result.queue_number, loketNumber);
+      
       toast({
         title: "Antrian Dipanggil",
         description: `${formatQueueNumber(result.queue_number)} dipanggil ke Loket ${loketNumber}`,
       });
+      
+      console.log('Queue called:', result);
     } else {
       toast({
         title: "Error",
