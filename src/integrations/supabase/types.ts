@@ -21,6 +21,7 @@ export type Database = {
           is_active: boolean | null
           loket_number: number
           queue_number: number
+          queue_type: string | null
         }
         Insert: {
           called_at?: string | null
@@ -28,6 +29,7 @@ export type Database = {
           is_active?: boolean | null
           loket_number: number
           queue_number: number
+          queue_type?: string | null
         }
         Update: {
           called_at?: string | null
@@ -35,6 +37,7 @@ export type Database = {
           is_active?: boolean | null
           loket_number?: number
           queue_number?: number
+          queue_type?: string | null
         }
         Relationships: []
       }
@@ -44,18 +47,21 @@ export type Database = {
           current_number: number
           id: string
           last_reset_at: string | null
+          queue_type: string | null
         }
         Insert: {
           created_at?: string | null
           current_number?: number
           id?: string
           last_reset_at?: string | null
+          queue_type?: string | null
         }
         Update: {
           created_at?: string | null
           current_number?: number
           id?: string
           last_reset_at?: string | null
+          queue_type?: string | null
         }
         Relationships: []
       }
