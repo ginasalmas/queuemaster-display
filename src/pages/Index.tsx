@@ -17,6 +17,15 @@ const Index = () => {
           </p>
           
           <div className="grid gap-6">
+            <Link to="/kiosk">
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-2xl py-8"
+                size="lg"
+              >
+                Kiosk - Ambil Antrian
+              </Button>
+            </Link>
+
             <Link to="/admin">
               <Button 
                 className="w-full bg-queue-loket hover:bg-queue-loket/90 text-white text-2xl py-8"
@@ -39,6 +48,7 @@ const Index = () => {
           <div className="mt-12 p-6 bg-card rounded-lg border border-border">
             <h3 className="text-lg font-semibold mb-2 text-foreground">Cara Penggunaan:</h3>
             <ul className="text-left text-muted-foreground space-y-2">
+              <li>• Kiosk: Layar touchscreen untuk pengunjung mengambil nomor antrian</li>
               <li>• Admin: Tekan keyboard 1, 2, atau 3 untuk memanggil antrian</li>
               <li>• Display: Tampilkan di TV untuk pengunjung</li>
               <li>• Antrian akan reset otomatis setiap jam 12 siang dan malam</li>
