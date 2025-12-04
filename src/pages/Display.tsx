@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
 import QueueHeader from '@/components/QueueHeader';
 import { getActiveQueueCalls, formatQueueNumber, checkAndResetQueue, speakQueueNumber } from '@/lib/queueManager';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,21 +10,17 @@ const Display: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    // Update time every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
-    // Check for queue reset every minute
     const resetChecker = setInterval(() => {
       checkAndResetQueue();
     }, 60000);
 
-    // Subscribe to queue calls
     const channel = supabase
       .channel('display-updates')
       .on(
@@ -41,22 +36,19 @@ const Display: React.FC = () => {
             const newCall = payload.new as QueueCall;
             setLatestCall(newCall);
             
-            // Speak the queue number - IMPORTANT: Call this on display
             setTimeout(() => {
-              speakQueueNumber(newCall.queue_number, newCall.loket_number);
+              speakQueueNumber(newCall.queue_number, newCall.loket_number, newCall.queue_type || 'A');
             }, 500);
             
-            // Update the list
-            const calls = await getActiveQueueCalls();
+            const calls = await getActiveQueueCalls('A');
             setQueueCalls(calls);
           }
         }
       )
       .subscribe();
 
-    // Load initial data
     const loadInitialData = async () => {
-      const calls = await getActiveQueueCalls();
+      const calls = await getActiveQueueCalls('A');
       setQueueCalls(calls);
       if (calls.length > 0) {
         setLatestCall(calls[0]);
@@ -73,10 +65,11 @@ const Display: React.FC = () => {
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
       day: '2-digit',
       month: 'long',
       year: 'numeric'
-    }).toUpperCase();
+    });
   };
 
   const formatTime = (date: Date) => {
@@ -88,7 +81,6 @@ const Display: React.FC = () => {
     });
   };
 
-  // Group queue calls by loket
   const loketQueues = {
     1: queueCalls.find(call => call.loket_number === 1),
     2: queueCalls.find(call => call.loket_number === 2),
@@ -96,149 +88,125 @@ const Display: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       <QueueHeader />
       
-      <div className="bg-destructive py-4 px-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
-        <p className="text-center text-destructive-foreground text-xl font-bold tracking-wide relative z-10">
-          SELAMAT DATANG DI LAYANAN KUNJUNGAN - HARAP PERHATIKAN NOMOR ANTRIAN ANDA
-        </p>
+      {/* Running Text Banner */}
+      <div className="bg-destructive py-3 overflow-hidden">
+        <div className="animate-marquee whitespace-nowrap">
+          <span className="text-destructive-foreground text-lg font-semibold mx-8">
+            ★ SELAMAT DATANG DI LAYANAN KUNJUNGAN - HARAP PERHATIKAN NOMOR ANTRIAN ANDA ★
+          </span>
+          <span className="text-destructive-foreground text-lg font-semibold mx-8">
+            ★ SELAMAT DATANG DI LAYANAN KUNJUNGAN - HARAP PERHATIKAN NOMOR ANTRIAN ANDA ★
+          </span>
+          <span className="text-destructive-foreground text-lg font-semibold mx-8">
+            ★ SELAMAT DATANG DI LAYANAN KUNJUNGAN - HARAP PERHATIKAN NOMOR ANTRIAN ANDA ★
+          </span>
+        </div>
       </div>
 
-      <main className="flex-1 container mx-auto px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-          {/* Left Side - Current Queue and Time */}
-          <div className="lg:col-span-2 space-y-6">
+      <main className="flex-1 p-6">
+        <div className="grid grid-cols-12 gap-6 h-full">
+          {/* Left Side - Main Display */}
+          <div className="col-span-8 flex flex-col gap-6">
             {/* Date and Time */}
-            <Card className="bg-gradient-to-br from-card to-primary border-2 border-display-border p-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-queue-loket mb-2">
-                  {formatDate(currentTime)}
-                </p>
-                <p className="text-5xl font-bold text-foreground font-mono tracking-wider">
-                  {formatTime(currentTime)}
-                </p>
-              </div>
-            </Card>
+            <div className="bg-card border border-border rounded-lg p-4 text-center">
+              <p className="text-lg text-muted-foreground">{formatDate(currentTime)}</p>
+              <p className="text-4xl font-bold text-foreground font-mono">{formatTime(currentTime)}</p>
+            </div>
 
-            {/* Main Display - Current Queue Being Called */}
-            <Card className="bg-gradient-to-br from-accent/10 via-card to-card border-4 border-accent p-10 relative overflow-hidden h-[500px] flex flex-col justify-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-transparent to-queue-loket/5 animate-pulse" />
-              
-              <div className="relative z-10 text-center space-y-6">
-                <div className="inline-block bg-accent px-8 py-3 rounded-full shadow-lg">
-                  <h2 className="text-3xl font-black text-accent-foreground tracking-wider">
-                    ANTRIAN DIPANGGIL
-                  </h2>
+            {/* Current Queue Being Called */}
+            <div className="flex-1 bg-card border border-border rounded-lg p-8 flex flex-col items-center justify-center">
+              <div className="bg-accent/10 px-6 py-2 rounded-full mb-6">
+                <h2 className="text-xl font-bold text-accent">NOMOR ANTRIAN DIPANGGIL</h2>
+              </div>
+
+              {latestCall ? (
+                <div className="text-center animate-scale-in">
+                  <div className="text-[8rem] font-black text-foreground leading-none mb-4">
+                    {formatQueueNumber(latestCall.queue_number, latestCall.queue_type || 'A')}
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-4 text-muted-foreground">
+                    <span className="text-2xl">→</span>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <span className="text-lg text-muted-foreground">Menuju</span>
+                    <div className="inline-flex items-center gap-2 bg-primary px-6 py-3 rounded-lg ml-3">
+                      <span className="text-3xl font-bold text-primary-foreground">
+                        LOKET {latestCall.loket_number}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-
-                {latestCall ? (
-                  <div className="space-y-8 animate-scale-in">
-                    <div>
-                      <p className="text-2xl font-semibold text-queue-number mb-4">
-                        NO ANTRIAN
-                      </p>
-                      <div className="text-[10rem] font-black text-queue-number leading-none drop-shadow-2xl animate-pulse">
-                        {formatQueueNumber(latestCall.queue_number).replace('A', '')}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-8">
-                      <div className="text-8xl text-accent animate-pulse">→</div>
-                    </div>
-
-                    <div>
-                      <p className="text-2xl font-semibold text-queue-loket mb-4">
-                        NO LOKET
-                      </p>
-                      <div className="inline-block bg-queue-loket px-12 py-6 rounded-3xl shadow-2xl">
-                        <div className="text-[8rem] font-black text-white leading-none">
-                          {formatQueueNumber(latestCall.loket_number).replace('A', '')}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-center space-y-4">
-                      <div className="text-8xl opacity-20">⏳</div>
-                      <p className="text-3xl text-muted-foreground">
-                        Menunggu Antrian...
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </Card>
+              ) : (
+                <div className="text-center">
+                  <div className="text-6xl opacity-20 mb-4">⏳</div>
+                  <p className="text-xl text-muted-foreground">Menunggu Antrian...</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Side - Loket List */}
-          <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h3 className="text-3xl font-bold text-foreground">
-                ANTRIAN PER LOKET
-              </h3>
+          <div className="col-span-4 flex flex-col gap-4">
+            <div className="bg-muted px-4 py-3 rounded-lg text-center">
+              <h3 className="text-lg font-bold text-foreground">ANTRIAN PER LOKET</h3>
             </div>
 
             {[1, 2, 3].map((loketNum) => (
-              <Card 
+              <div 
                 key={loketNum}
-                className={`p-6 border-2 transition-all duration-500 ${
+                className={`flex-1 rounded-lg p-4 border transition-all duration-300 ${
                   latestCall?.loket_number === loketNum
-                    ? 'bg-gradient-to-br from-queue-loket/20 to-card border-queue-loket shadow-lg scale-105'
-                    : 'bg-gradient-to-br from-card to-primary border-display-border'
+                    ? 'bg-accent/10 border-accent'
+                    : 'bg-card border-border'
                 }`}
               >
-                <div className="space-y-4">
-                  <div className="inline-block bg-queue-loket px-6 py-2 rounded-full">
-                    <p className="text-xl font-bold text-white">
-                      LOKET {String(loketNum).padStart(3, '0')}
-                    </p>
+                <div className="h-full flex flex-col justify-center">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-sm font-semibold px-3 py-1 rounded-full ${
+                      latestCall?.loket_number === loketNum
+                        ? 'bg-accent text-accent-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      LOKET {loketNum}
+                    </span>
                   </div>
                   
-                  {loketQueues[loketNum as keyof typeof loketQueues] ? (
-                    <div className="text-center">
-                      <div className={`text-7xl font-black transition-all duration-500 ${
+                  <div className="text-center">
+                    {loketQueues[loketNum as keyof typeof loketQueues] ? (
+                      <div className={`text-4xl font-bold ${
                         latestCall?.loket_number === loketNum
-                          ? 'text-queue-loket drop-shadow-lg scale-110'
+                          ? 'text-accent'
                           : 'text-foreground'
                       }`}>
-                        {formatQueueNumber(loketQueues[loketNum as keyof typeof loketQueues]!.queue_number)}
+                        {formatQueueNumber(loketQueues[loketNum as keyof typeof loketQueues]!.queue_number, 'A')}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="text-5xl text-muted-foreground/30">---</div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Belum ada antrian
-                      </p>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="text-3xl text-muted-foreground/40">---</div>
+                    )}
+                  </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
       </main>
 
-      <footer className="bg-header-bg py-6 px-8 border-t-4 border-accent">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-3xl">🦅</span>
-            </div>
+      {/* Footer */}
+      <footer className="bg-muted py-4 px-6 border-t border-border">
+        <div className="flex items-center justify-center gap-6">
+          <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center">
+            <span className="text-xl">🦅</span>
           </div>
           <div className="text-center">
-            <p className="text-3xl font-black text-accent tracking-wider drop-shadow-lg">
-              PEMASYARAKATAN PASTI
-            </p>
-            <p className="text-3xl font-black text-accent tracking-wider drop-shadow-lg">
-              BERMANFAAT UNTUK MASYARAKAT
-            </p>
+            <p className="text-lg font-bold text-foreground">PEMASYARAKATAN PASTI BERMANFAAT UNTUK MASYARAKAT</p>
           </div>
-          <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-3xl">⚖️</span>
+          <div className="w-12 h-12 bg-accent/20 rounded-full flex items-center justify-center">
+            <span className="text-xl">⚖️</span>
           </div>
         </div>
       </footer>
