@@ -52,12 +52,12 @@ const Admin: React.FC = () => {
           table: 'queue_calls',
         },
         (payload) => {
-          if (payload.eventType === 'INSERT' && payload.new) {
+          if (payload.eventType === 'INSERT' && payload.new && payload.new.queue_type === 'A') {
             const call = payload.new;
             setLokets(prev => ({
               ...prev,
               [call.loket_number]: {
-                currentQueue: formatQueueNumber(call.queue_number),
+                currentQueue: formatQueueNumber(call.queue_number, 'A'),
                 lastCalled: call.queue_number,
               },
             }));
@@ -72,8 +72,8 @@ const Admin: React.FC = () => {
           table: 'queue_state',
         },
         (payload) => {
-          if (payload.new) {
-            setNextQueue(formatQueueNumber(payload.new.current_number + 1));
+          if (payload.new && payload.new.queue_type === 'A') {
+            setNextQueue(formatQueueNumber(payload.new.current_number + 1, 'A'));
           }
         }
       )
@@ -83,16 +83,18 @@ const Admin: React.FC = () => {
       const { data: state } = await supabase
         .from('queue_state')
         .select('*')
-        .single();
+        .eq('queue_type', 'A')
+        .maybeSingle();
       
       if (state) {
-        setNextQueue(formatQueueNumber(state.current_number + 1));
+        setNextQueue(formatQueueNumber(state.current_number + 1, 'A'));
       }
 
       const { data: calls } = await supabase
         .from('queue_calls')
         .select('*')
         .eq('is_active', true)
+        .eq('queue_type', 'A')
         .order('called_at', { ascending: false });
       
       if (calls) {
@@ -106,7 +108,7 @@ const Admin: React.FC = () => {
           if (!loketStates[call.loket_number].lastCalled || 
               call.queue_number > loketStates[call.loket_number].lastCalled) {
             loketStates[call.loket_number] = {
-              currentQueue: formatQueueNumber(call.queue_number),
+              currentQueue: formatQueueNumber(call.queue_number, 'A'),
               lastCalled: call.queue_number,
             };
           }
@@ -140,14 +142,14 @@ const Admin: React.FC = () => {
   }, []);
 
   const handleCallNext = async (loketNumber: number) => {
-    const result = await callQueue(loketNumber);
+    const result = await callQueue(loketNumber, 'A');
     
     if (result) {
-      speakQueueNumber(result.queue_number, loketNumber);
+      speakQueueNumber(result.queue_number, loketNumber, 'A');
       
       toast({
         title: "Antrian Dipanggil",
-        description: `${formatQueueNumber(result.queue_number)} dipanggil ke Loket ${loketNumber}`,
+        description: `${formatQueueNumber(result.queue_number, 'A')} dipanggil ke Loket ${loketNumber}`,
       });
     } else {
       toast({
@@ -159,12 +161,12 @@ const Admin: React.FC = () => {
   };
 
   const handleRecall = async (loketNumber: number) => {
-    const result = await recallLastQueue(loketNumber);
+    const result = await recallLastQueue(loketNumber, 'A');
     
     if (result) {
       toast({
         title: "Memanggil Ulang",
-        description: `${formatQueueNumber(result.queueNumber)} dipanggil ulang ke Loket ${loketNumber}`,
+        description: `${formatQueueNumber(result.queueNumber, 'A')} dipanggil ulang ke Loket ${loketNumber}`,
       });
     } else {
       toast({
@@ -176,7 +178,7 @@ const Admin: React.FC = () => {
   };
 
   const handleReset = async () => {
-    const success = await resetQueue();
+    const success = await resetQueue('A');
     
     if (success) {
       setLokets({
