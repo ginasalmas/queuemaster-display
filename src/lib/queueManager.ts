@@ -136,3 +136,50 @@ export const checkAndResetQueue = async () => {
   const { error } = await supabase.rpc('check_and_reset_queue');
   if (error) console.error('Error checking queue reset:', error);
 };
+
+export const resetQueue = async (): Promise<boolean> => {
+  try {
+    // Reset queue state to 0
+    const { error: stateError } = await supabase
+      .from('queue_state')
+      .update({ current_number: 0, last_reset_at: new Date().toISOString() })
+      .neq('id', '');
+
+    if (stateError) throw stateError;
+
+    // Deactivate all active queue calls
+    const { error: callsError } = await supabase
+      .from('queue_calls')
+      .update({ is_active: false })
+      .eq('is_active', true);
+
+    if (callsError) throw callsError;
+
+    return true;
+  } catch (error) {
+    console.error('Error resetting queue:', error);
+    return false;
+  }
+};
+
+export const recallLastQueue = async (loketNumber: number): Promise<{ queueNumber: number } | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('queue_calls')
+      .select('queue_number')
+      .eq('loket_number', loketNumber)
+      .order('called_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return null;
+
+    // Trigger speech again
+    speakQueueNumber(data.queue_number, loketNumber);
+    return { queueNumber: data.queue_number };
+  } catch (error) {
+    console.error('Error recalling queue:', error);
+    return null;
+  }
+};

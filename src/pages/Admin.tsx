@@ -2,9 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import QueueHeader from '@/components/QueueHeader';
-import { callQueue, formatQueueNumber, speakQueueNumber, checkAndResetQueue } from '@/lib/queueManager';
+import { callQueue, formatQueueNumber, speakQueueNumber, checkAndResetQueue, resetQueue, recallLastQueue } from '@/lib/queueManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { RotateCcw, Volume2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface LoketState {
   currentQueue: string;
@@ -22,17 +34,14 @@ const Admin: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    // Update time every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
-    // Check for queue reset every minute
     const resetChecker = setInterval(() => {
       checkAndResetQueue();
     }, 60000);
 
-    // Subscribe to queue calls
     const channel = supabase
       .channel('queue-updates')
       .on(
@@ -70,7 +79,6 @@ const Admin: React.FC = () => {
       )
       .subscribe();
 
-    // Load initial state
     const loadInitialState = async () => {
       const { data: state } = await supabase
         .from('queue_state')
@@ -118,11 +126,13 @@ const Admin: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Keyboard shortcuts
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === '1') handleCallNext(1);
       else if (e.key === '2') handleCallNext(2);
       else if (e.key === '3') handleCallNext(3);
+      else if (e.key === '7') handleRecall(1);
+      else if (e.key === '8') handleRecall(2);
+      else if (e.key === '9') handleRecall(3);
     };
 
     window.addEventListener('keydown', handleKeyPress);
@@ -133,19 +143,57 @@ const Admin: React.FC = () => {
     const result = await callQueue(loketNumber);
     
     if (result) {
-      // Call speech function
       speakQueueNumber(result.queue_number, loketNumber);
       
       toast({
         title: "Antrian Dipanggil",
         description: `${formatQueueNumber(result.queue_number)} dipanggil ke Loket ${loketNumber}`,
       });
-      
-      console.log('Queue called:', result);
     } else {
       toast({
         title: "Error",
         description: "Nomor antrian sudah dipanggil oleh loket lain",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRecall = async (loketNumber: number) => {
+    const result = await recallLastQueue(loketNumber);
+    
+    if (result) {
+      toast({
+        title: "Memanggil Ulang",
+        description: `${formatQueueNumber(result.queueNumber)} dipanggil ulang ke Loket ${loketNumber}`,
+      });
+    } else {
+      toast({
+        title: "Tidak Ada Antrian",
+        description: `Belum ada antrian yang dipanggil di Loket ${loketNumber}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReset = async () => {
+    const success = await resetQueue();
+    
+    if (success) {
+      setLokets({
+        1: { currentQueue: 'A000', lastCalled: 0 },
+        2: { currentQueue: 'A000', lastCalled: 0 },
+        3: { currentQueue: 'A000', lastCalled: 0 },
+      });
+      setNextQueue('A001');
+      
+      toast({
+        title: "Reset Berhasil",
+        description: "Semua antrian telah direset ke awal",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Gagal mereset antrian",
         variant: "destructive",
       });
     }
@@ -173,11 +221,37 @@ const Admin: React.FC = () => {
       <QueueHeader />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-foreground mb-2">Admin Control Panel</h2>
-          <p className="text-muted-foreground">
-            Tekan Keyboard 1, 2, Atau 3 Untuk Memanggil Antrian Selanjutnya
-          </p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-foreground mb-2">Admin Control Panel</h2>
+            <p className="text-muted-foreground">
+              Keyboard: 1,2,3 = Panggil Selanjutnya | 7,8,9 = Panggil Ulang
+            </p>
+          </div>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="lg" className="gap-2">
+                <RotateCcw className="h-5 w-5" />
+                Reset Antrian
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset Semua Antrian?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Tindakan ini akan mengembalikan semua nomor antrian ke awal (A001). 
+                  Semua data antrian yang sedang aktif akan dihapus.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Batal</AlertDialogCancel>
+                <AlertDialogAction onClick={handleReset}>
+                  Ya, Reset Antrian
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -218,13 +292,25 @@ const Admin: React.FC = () => {
                   </div>
                 </div>
 
-                <Button
-                  onClick={() => handleCallNext(loketNum)}
-                  className="w-full bg-queue-loket hover:bg-queue-loket/90 text-white text-lg py-6 rounded-xl font-semibold"
-                  size="lg"
-                >
-                  Call Next ({loketNum})
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => handleCallNext(loketNum)}
+                    className="w-full bg-queue-loket hover:bg-queue-loket/90 text-white text-lg py-6 rounded-xl font-semibold"
+                    size="lg"
+                  >
+                    Call Next ({loketNum})
+                  </Button>
+                  
+                  <Button
+                    onClick={() => handleRecall(loketNum)}
+                    variant="outline"
+                    className="w-full text-lg py-4 rounded-xl font-semibold gap-2"
+                    size="lg"
+                  >
+                    <Volume2 className="h-5 w-5" />
+                    Panggil Ulang ({loketNum + 6})
+                  </Button>
+                </div>
               </div>
             </Card>
           ))}
