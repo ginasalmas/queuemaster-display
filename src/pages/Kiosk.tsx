@@ -109,7 +109,7 @@ const Kiosk = () => {
         .from('queue_state')
         .select('*')
         .eq('queue_type', queueType.id)
-        .single();
+        .maybeSingle();
 
       if (stateError) {
         // If no state exists for this type, create it
